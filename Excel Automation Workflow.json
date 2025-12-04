@@ -1,0 +1,317 @@
+{
+  "name": "Excel Automation Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "has:attachment"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -800,
+        0
+      ],
+      "id": "67fed7fc-d2e7-4cc2-b91f-0314b87d9ef6",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VFeWOfSh8gpvA8Zc",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputItem = $input.first();\nconst binaryData = inputItem.binary || {};\n\nconst excelItems = [];\n\nfor (const propertyName of Object.keys(binaryData)) {\n  const file = binaryData[propertyName];\n\n  // This MIME type = real .xlsx file (works even when filename is missing)\n  const isExcel = file.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||\n                  file.mimeType === 'application/vnd.ms-excel'; // old .xls\n\n  if (isExcel) {\n    excelItems.push({\n      json: {\n        detectedAsExcel: true,\n        originalMime: file.mimeType,\n        originalProperty: propertyName\n      },\n      binary: {\n        data: file   // pass the binary through unchanged\n      }\n    });\n  }\n}\n\nif (excelItems.length === 0) {\n  return [{\n    json: {\n      error: 'No Excel files detected by MIME type',\n      allAttachments: Object.keys(binaryData).map(key => ({\n        property: key,\n        mime: binaryData[key].mimeType,\n        name: binaryData[key].originalName\n      }))\n    }\n  }];\n}\n\nreturn excelItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        0
+      ],
+      "id": "653e6f0a-39f9-4332-8c9a-870719b863b3",
+      "name": "Code in JavaScript",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        0
+      ],
+      "id": "08536dc2-4583-4cbd-9e67-c89ce5b7fdb4",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a3fb902e-c1bc-4ed1-bb39-65e6aae17321",
+              "name": "ITEM NAME ",
+              "value": "={{ $json[\"Item name\"] ?? $json[\"ITEM NAME\"] ?? $json[\"ITEM NAME \"] ?? $json[\"Name\"] ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "0c88e0df-8cdb-4eae-883d-196a8044af39",
+              "name": "DESCRIPTION",
+              "value": "={{ $json[\"Description\"] ?? $json[\"DESCRIPTION\"] ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "39b0610f-1a28-4690-8b8c-46feb904c009",
+              "name": "COLOR",
+              "value": "={{ $json[\"Color\"] ?? $json[\"COLOR\"] ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "8e15942a-4703-4628-b5be-89985f06e3fa",
+              "name": "ITEM CODE ",
+              "value": "={{ $json[\"Item code\"] ?? $json[\"ITEM CODE\"] ?? $json[\"ITEM CODE \"] ?? $json[\"Code\"] ?? $json[\"SKU\"] ?? \"\" }}",
+              "type": "number"
+            },
+            {
+              "id": "bc40b1b6-5c14-4e6a-b9de-69d19b7cc1cb",
+              "name": "SIZE",
+              "value": "={{ $json[\"Size\"] ?? $json[\"SIZE\"] ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "5ceb47f3-e1cb-42b3-af92-a8bc259948af",
+              "name": "SERIAL",
+              "value": "={{ $json[\"Serial\"] ?? $json[\"SERIAL\"] ?? $json[\"Serial Number\"] ?? \"\" }}",
+              "type": "number"
+            },
+            {
+              "id": "82d74bb3-045e-4761-a9f7-08e4b5c3d89d",
+              "name": "STYLE NUM",
+              "value": "={{ $json[\"Style Number\"] ?? $json[\"STYLE NUM\"] ?? $json[\"Style number\"] ?? $json[\"Style\"] ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "21b477cb-e6ac-4f9e-8370-8d6b020e7c26",
+              "name": "SGTIN",
+              "value": "={{ $json[\"SGTIN\"] ?? $json[\"sgtin\"] ?? $json[\"Sgtin\"] ?? $json[\"Serial\"] ?? \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        112,
+        0
+      ],
+      "id": "485ab043-dd33-46ab-81a7-f3d1854e9a2d",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        0
+      ],
+      "id": "07e4e58f-d5d9-4503-834e-d402a8ed604c",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "content": "## GMAIL TRIGGER \n**Will only search for email with .xlsx attachments**",
+        "height": 320,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -848,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "63ba0f09-4d6e-49b8-be42-d6281ad202b4",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Code node\nSplit the variable number of attachments into multiple workflow items, filtering only .xlsx files. This handles 3, 4, 5, or any number dynamically.",
+        "height": 320,
+        "width": 272,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -592,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "2c20225b-5816-4dc0-a9a5-987aed7c7220",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Extract node\nReads each .xlsx attachment and converts its rows to JSON items (one item per row). This processes all attachments in parallel since n8n handles multi-item inputs natively.",
+        "height": 320,
+        "width": 272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -288,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "d059334b-340b-4f26-b8a0-bc351f0c5b72",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Edit field node \nThis is for mapping the columns to follow. For a clean and unified output. This is also to force correct order",
+        "height": 320,
+        "width": 272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        16,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "796de6e7-fe7a-4489-8646-10d45bc7d9c4",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Convertion to file node\nThis node is for converting to the json file to .xlsx",
+        "height": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        320,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "8d5255f3-ccd6-4595-b092-877b509ac6af",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "message": "Attached here is the merged excel you sent. You're welcome!",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "89789e3f-4417-443b-9503-686c82ab7281",
+      "name": "Reply to a message",
+      "webhookId": "ba1d65ff-a0d2-4e9d-8d4f-1092bfe968f9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VFeWOfSh8gpvA8Zc",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3291f913-a905-4a3a-807c-8af530d5b266",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0f1cccdc8824485857169dff357ae0aa1065585a3265444111ace150b62fa324"
+  },
+  "id": "nnV96OtvW6VrlxNw",
+  "tags": []
+}
